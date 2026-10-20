@@ -60,6 +60,9 @@ export function subStoreTransformPlugin() {
         return contents.replace(
             new RegExp(`eval\\s*\\(\\s*['\"\`]require\\s*\\(\\s*['\"\`]${escaped}['\"\`]\\s*\\)['\"\`]\\s*,?\\s*\\)`, 'g'),
             replacement,
+        ).replace(
+            new RegExp("(?<!['\"`])\\brequire\\s*\\(\\s*['\"`]" + escaped + "['\"`]\\s*\\)", 'g'),
+            replacement,
         );
     }
 
@@ -140,7 +143,10 @@ export default function getParser() {
                 }
             }
 
-            if (id.includes('sub-store/backend/src/core/proxy-utils/parsers/peggy/')) {
+            if (
+                id.includes('sub-store/backend/src/core/proxy-utils/parsers/peggy/') &&
+                contents.includes('const grammars = String.raw')
+            ) {
                 contents = precompilePeggyParser(contents, id, this);
             }
 
