@@ -5,31 +5,44 @@
     "type": "module",
     "scripts": {
         "prepare:quickjs-wasm": "bash scripts/copy-quickjs-wasm.sh",
-        "dev": "bun run prepare:quickjs-wasm && vite dev --host 0.0.0.0 --port 3000",
-        "build": "bun run prepare:quickjs-wasm && vite build",
-        "preview": "bun run prepare:quickjs-wasm && vite preview --host 0.0.0.0 --port 3000",
-        "fetch:substore": "bash scripts/fetch-substore.sh",
-        "install:backend": "cd sub-store/backend && bun install --ignore-scripts",
-        "deploy:local": "bun run prepare:quickjs-wasm && npx wrangler deploy",
-        "deploy:action": "set -o pipefail && bun run prepare:quickjs-wasm && npx wrangler deploy 2>&1 | sed -e '/workers.dev/d' -e '/https:\\/\\//d'",
+        "dev:workers": "pnpm run prepare:quickjs-wasm && vite dev --config vite.workers.config.js --host 0.0.0.0 --port 3000",
+        "build:workers": "pnpm run prepare:quickjs-wasm && vite build --config vite.workers.config.js",
+        "preview:workers": "pnpm run prepare:quickjs-wasm && vite preview --config vite.workers.config.js --host 0.0.0.0 --port 3000",
+        "fetch:substore": "bash scripts/fetch-substore.sh && pnpm run install:backend",
+        "install:backend": "cd sub-store/backend && pnpm install --no-frozen-lockfile --ignore-scripts",
+        "deploy:workers:local": "pnpm run prepare:quickjs-wasm && npx wrangler deploy",
+        "deploy:workers:action": "bash -o pipefail -c 'pnpm run prepare:quickjs-wasm && npx wrangler deploy 2>&1 | sed -e \"/workers.dev/d\" -e \"/https:\\\\/\\\\//d\"'",
         "tail": "npx wrangler tail --format=pretty"
     },
     "devDependencies": {
         "@cloudflare/vite-plugin": "^1.18.0",
+        "@tailwindcss/vite": "^4.3.0",
         "@vitejs/plugin-react": "^5.1.2",
+        "fastestsmallesttextencoderdecoder": "^1.0.22",
+        "peggy": "^2.0.1",
+        "tailwindcss": "^4.3.0",
         "vite": "^7.3.0",
         "wrangler": "^4.61.0"
     },
     "dependencies": {
         "@cloudflare/actors": "0.0.1-beta.6",
-        "@marsidev/react-turnstile": "^1.4.0",
+        "@fontsource/inter": "^5.2.8",
         "@jitl/quickjs-wasmfile-release-sync": "^0.31.0",
+        "@marsidev/react-turnstile": "^1.4.0",
         "buffer": "^6.0.3",
         "jose": "^6.1.3",
         "mmdb-lib": "^3.0.1",
+        "pg": "^8.20.0",
         "quickjs-emscripten": "^0.31.0",
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
         "react-router-dom": "^7.11.0"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild",
+            "sharp",
+            "workerd"
+        ]
     }
 }

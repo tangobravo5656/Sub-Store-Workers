@@ -13,10 +13,11 @@ import { hashPassword } from '../atoms/crypto/password.js';
 import { getSystemSettings } from './services/systemSettingsService.js';
 import { getUserById, getUser, updateUserData, updatePassword, updateUsername, updatePath, generatePath } from './services/userService.js';
 import { getRequestId } from '../../utils/logger.js';
-import { getAccessLogFromUserDo } from '../../atoms/cf/bindings.js';
 import { normalizeUserDataToObject } from '../atoms/user/normalizeUserDataToObject.js';
+import { sendTestNotification } from '../../orchestration/diplomat/notificationGateway.js';
+import { getChannelConfigs } from '../../../dashboard/constants/notificationChannels.js';
 
-export async function handleDashboardUserApi({ request, env, authPayload }) {
+export async function handleDashboardUserApi({ request, env, authPayload, services }) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
@@ -34,7 +35,7 @@ export async function handleDashboardUserApi({ request, env, authPayload }) {
         const requestId = getRequestId(request);
         const limit = Math.max(1, Math.min(200, parseInt(url.searchParams.get('limit') || '50', 10) || 50));
         const beforeId = parseInt(url.searchParams.get('beforeId') || '0', 10) || 0;
-        const body = await getAccessLogFromUserDo({ env, userId: authPayload.id, limit, beforeId, requestId });
+        const body = await services.userGateway.listAccessLog(authPayload.id, { limit, beforeId, requestId });
         return jsonResponse(body);
     }
 
@@ -87,7 +88,7 @@ export async function handleDashboardUserApi({ request, env, authPayload }) {
             surgeVersion: '5.0.0',
             surgeBuild: '2000',
             cronEnabled: true,
-            notification: { type: 'none', bark: { serverUrl: 'https://api.day.app', deviceKey: '', group: 'SubStore' }, pushover: { userKey: '', appToken: '' } }
+            notification: { type: 'none', ...getChannelConfigs() }
         };
         return jsonResponse(settings);
     }
@@ -100,6 +101,17 @@ export async function handleDashboardUserApi({ request, env, authPayload }) {
         userData.__settings__ = newSettings;
         await updateUserData(ctx, authPayload.id, userData);
         return okResponse();
+    }
+
+    // POST /api/dashboard/user/notification/test
+    if (path === '/api/dashboard/user/notification/test' && method === 'POST') {
+        const config = await request.json();
+        try {
+            await sendTestNotification(config);
+            return okResponse();
+        } catch (e) {
+            return errorResponse(e.message, 400);
+        }
     }
 
     return errorResponse('Not Found', 404);

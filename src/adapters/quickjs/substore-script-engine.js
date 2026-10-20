@@ -5,8 +5,16 @@
  * while keeping the script API surface as compatible as possible.
  */
 
-import { getQuickJsModule } from './quickjs-module.js';
 import { debug, warn } from '../../utils/logger.js';
+
+let quickJsModuleLoaderPromise = null;
+
+async function getQuickJsModule() {
+    if (!quickJsModuleLoaderPromise) {
+        quickJsModuleLoaderPromise = import('./quickjs-module.js').then((mod) => mod.getQuickJsModule());
+    }
+    return await quickJsModuleLoaderPromise;
+}
 
 const GLOBAL_CREATE_DYNAMIC_FUNCTION = '__substore_workers_createDynamicFunction__';
 
@@ -504,13 +512,14 @@ async function runScriptOnce({
     const yamlProxy = mkProxy('ProxyUtils.yaml');
     const b64dProxy = mkProxy('ProxyUtils.Base64.decode');
     const b64eProxy = mkProxy('ProxyUtils.Base64.encode');
+    const domainResolversProxy = mkProxy('DOMAIN_RESOLVERS');
     const cacheProxy = mkProxy('scriptResourceCache');
     const flowUtilsProxy = mkProxy('flowUtils');
     const produceArtifactProxy = mkProxy('produceArtifact');
 
     // Wrapper that emulates upstream new Function signature
     const wrapperSource = `
-(function($arguments,$options,$substore,lodash,ProxyUtils,yaml,Buffer,b64d,b64e,scriptResourceCache,flowUtils,produceArtifact,require){
+(function($arguments,$options,$substore,lodash,ProxyUtils,yaml,Buffer,b64d,b64e,DOMAIN_RESOLVERS,scriptResourceCache,flowUtils,produceArtifact,require){
 ${script}\n
 return ${name};
 })
@@ -539,6 +548,7 @@ return ${name};
             BufferPolyfill,
             b64dProxy,
             b64eProxy,
+            domainResolversProxy,
             cacheProxy,
             flowUtilsProxy,
             produceArtifactProxy,
@@ -624,6 +634,7 @@ return ${name};
         yamlProxy.dispose();
         b64dProxy.dispose();
         b64eProxy.dispose();
+        domainResolversProxy.dispose();
         cacheProxy.dispose();
         flowUtilsProxy.dispose();
         produceArtifactProxy.dispose();
@@ -655,6 +666,7 @@ export function ensureSubStoreQuickJsScriptEngineInstalled({
         $substore,
         lodash,
         ProxyUtils,
+        DOMAIN_RESOLVERS,
         scriptResourceCache,
         flowUtils,
         produceArtifact,
@@ -663,7 +675,7 @@ export function ensureSubStoreQuickJsScriptEngineInstalled({
 
         // Debug trace: whether Script Filter/Operator reached QuickJS.
         // This is intentionally lightweight and only logs when DEBUG=true.
-        const requestId = globalThis.__current_request_id__ || 'unknown';
+        const requestId = globalThis.__substore_get_active_context__?.()?.requestId || 'unknown';
         if (name === 'filter' || name === 'operator') {
             const mode = normalizedScript !== script ? 'shortcut' : 'function';
             debug(`[SubStoreScript] [${requestId}] compile ${name} (${mode})`);
@@ -681,6 +693,7 @@ export function ensureSubStoreQuickJsScriptEngineInstalled({
             surgeUtils: globalThis.$utils,
             lodash,
             ProxyUtils,
+            DOMAIN_RESOLVERS,
             scriptResourceCache,
             flowUtils,
             // function
@@ -689,7 +702,7 @@ export function ensureSubStoreQuickJsScriptEngineInstalled({
 
         // Return a function compatible with upstream createDynamicFunction() output.
         return async (input = [], targetPlatform, context) => {
-            const requestId2 = globalThis.__current_request_id__ || 'unknown';
+            const requestId2 = globalThis.__substore_get_active_context__?.()?.requestId || 'unknown';
             if (name === 'filter' || name === 'operator') {
                 const inputHint = Array.isArray(input) ? `list(${input.length})` : 'artifact';
                 debug(`[SubStoreScript] [${requestId2}] run ${name} ${inputHint}`);

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../api';
 
 const FRONTEND_DEFAULT_URL = 'https://sub-store.vercel.app/';
 
@@ -27,6 +28,21 @@ export const AuthProvider = ({ children }) => {
     const isAuthenticated = !!token;
     const isAdmin = role === 'admin';
 
+    const refreshFrontendUrl = async () => {
+        try {
+            const { ok, data: settings } = await api('/api/dashboard/settings/public');
+            if (!ok) return null;
+            if (settings.frontendUrl) {
+                localStorage.setItem('ss_frontend_url', settings.frontendUrl);
+                setFrontendUrl(settings.frontendUrl);
+                return settings.frontendUrl;
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    };
+
     // 验证 token 有效性（仅在明确 401 时清除）
     useEffect(() => {
         const validateToken = async () => {
@@ -37,37 +53,10 @@ export const AuthProvider = ({ children }) => {
             }
 
             try {
-                const res = await fetch('/api/dashboard/user/me', {
-                    headers: { 'Authorization': `Bearer ${storedToken}` }
-                });
-
-                // 只有明确的 401 才清除登录状态
-                if (res.status === 401) {
-                    console.log('[Auth] Token 无效，清除登录状态');
-                    localStorage.removeItem('ss_token');
-                    localStorage.removeItem('ss_role');
-                    localStorage.removeItem('ss_path');
-                    localStorage.removeItem('ss_frontend_url');
-                    setToken(null);
-                    setRole(null);
-                    setUserPath(null);
-                    setFrontendUrl(FRONTEND_DEFAULT_URL);
-                } else if (res.ok) {
-                    // 刷新 frontendUrl
-                    try {
-                        const settingsRes = await fetch('/api/dashboard/settings/public');
-                        if (settingsRes.ok) {
-                            const settings = await settingsRes.json();
-                            if (settings.frontendUrl) {
-                                localStorage.setItem('ss_frontend_url', settings.frontendUrl);
-                                setFrontendUrl(settings.frontendUrl);
-                            }
-                        }
-                    } catch (e) {
-                        // 忽略刷新失败
-                    }
+                const { ok } = await api('/api/dashboard/user/me');
+                if (ok) {
+                    await refreshFrontendUrl();
                 }
-                // 其他错误（网络问题、超时等）不处理，保持当前状态
             } catch (e) {
                 // 网络错误不清除登录状态
                 console.log('[Auth] 验证请求失败，保持当前状态:', e.message);
@@ -124,6 +113,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updatePath,
+        refreshFrontendUrl,
         setMustChangePassword,
     };
 

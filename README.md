@@ -40,7 +40,7 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 
 ---
 
-## 🚀 快速部署
+## 🚀 Cloudflare Workers 快速部署
 
 > [!NOTE]
 > 部署过程完全通过 GitHub 网页操作，**无需修改任何代码文件**。
@@ -55,7 +55,7 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 
 ### 第二步：创建 Cloudflare Pages 项目（前端）
 
-如果你想直接使用官方前端，可以跳过此步骤，并且后面的 GitHub Secrets 中的 `DEPLOY_SUB_STORE_FRONTEND` 也无需设置。
+如果你想直接使用官方前端，可以跳过此步骤，并且后面的 GitHub Variables 中的 `DEPLOY_SUB_STORE_FRONTEND` 也无需设置。
 
 *建议使用官方前端*
 
@@ -78,18 +78,23 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 1. 打开 [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. 右侧会显示 **Account ID**，复制它
 
-### 第五步：配置 GitHub Secrets
+### 第五步：配置 GitHub Secrets / Variables
 
 在你 Fork 的仓库中：
 
 1. 点击 **Settings** → **Secrets and variables** → **Actions**
-2. 点击 **New repository secret**，添加以下配置：
+2. 点击 **New repository secret**，添加以下 Secrets：
 
 | Secret 名称 | 说明 | 示例 |
 |-------------|------|------|
 | `CF_API_TOKEN` | Cloudflare API Token | `xxxxxxxxx` |
 | `CF_ACCOUNT_ID` | Cloudflare Account ID | `xxxxxxxxx` |
 | `JWT_SECRET` | JWT 签名密钥（必填，建议 32 位以上随机字符串） | `your-long-random-secret` |
+
+3. 点击 **Variables** → **New repository variable**，按需添加以下 Variables：
+
+| Variable 名称 | 说明 | 示例 |
+|---------------|------|------|
 | `DEPLOY_SUB_STORE_FRONTEND` | 是否部署 Sub-Store 前端 (可选，任意值为部署，不设置该变量则不部署前端) | `true` |
 
 ### 第六步：触发部署
@@ -98,10 +103,71 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 2. 选择 **Deploy to Cloudflare**
 3. 点击 **Run workflow** → **Run workflow**
 
+前端部署规则：
+
+- 自动检查 / 定时任务：只有检测到前端需要更新，且已设置 `DEPLOY_SUB_STORE_FRONTEND` 时，才会部署前端
+- 手动运行：如果将 `deploy_frontend` 选择为 `deploy`，即使没有设置 `DEPLOY_SUB_STORE_FRONTEND`，也会强制部署前端
+- 如果你想一直跳过前端部署，不设置 `DEPLOY_SUB_STORE_FRONTEND`，并在手动运行时选择 `skip` 即可
+
 部署完成后：
 - 后端：`https://sub-store.<your-subdomain>.workers.dev` 或你的域名
 - 前端：请到你的 Cloudflare Pages 项目中查看并绑定域名
 - 控制台：`你的后端域名/dashboard/`
+
+---
+
+## 🚀 Deno Deploy 快速部署
+
+Deno Deploy 目前无前端部分
+
+### 第一步：Fork 仓库
+
+点击 GitHub 页面右上角的 **Fork** 按钮，将仓库复制到你的账号。
+
+### 第二步：创建 Deno Deploy 项目
+
+1. 登录 [Deno Deploy](https://console.deno.com/)
+2. 点击 **New Playground**
+3. 点击右上角 **Settings**
+4. 项目名称修改为 `sub-store`
+5. 编辑 **Playground Configuration** 配置
+
+- Install command: `deno install`
+- Build command: `deno task build`
+- Pre-deploy command: `deno task migrate`
+- Entrypoint: `src/deno.js`
+- 其他保持默认
+
+### 第三步：获取 Deno Personal access Token
+
+点击右上角头像进入 **Account Settings**
+
+在 **Personal access tokens** 中创建一个 token (有效期根据需要自定义) 并复制它。
+
+### 第四步：配置 GitHub Secrets / Variables
+
+在你 Fork 的仓库中：
+
+1. 点击 **Settings** → **Secrets and variables** → **Actions**
+2. 点击 **New repository secret**，添加以下 Secrets：
+
+| Secret 名称 | 说明 | 示例 |
+|-------------|------|------|
+| `DENO_DEPLOY_TOKEN` | Deno Deploy Personal access Token | `xxxxxxxxx` |
+| `JWT_SECRET` | JWT 签名密钥（必填，建议 32 位以上随机字符串） | `your-long-random-secret` |
+
+### 第五步：触发部署
+
+1. 点击仓库的 **Actions** 标签
+2. 选择 **Deploy to Deno Deploy**
+3. 点击 **Run workflow** → **Run workflow**
+
+### 第六步：创建数据库
+
+1. 登录 [Deno Deploy](https://console.deno.com/)
+2. 点击 **Databases**
+4. 点击 **Provision database** 选择 **Prisma Postgres**
+5. 数据库创建完成后点击 **Assign** → **Select app** → 选择你的项目名称点击 **Attach database**
 
 ---
 
@@ -134,7 +200,6 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 
 ### 前置要求
 
-- bun
 - pnpm
 
 ### 快速开始
@@ -143,22 +208,19 @@ Workers 会在多实例下并发处理请求。为了兼容 Sub-Store 的原有�
 
 ```bash
 # 安装项目依赖
-bun install
+pnpm install
 
-# 下载 Sub-Store 源码
-bun run fetch:substore
+# 下载 Sub-Store 源码并安装后端依赖
+pnpm run fetch:substore
 
-# 安装 Sub-Store 依赖
-bun run install:backend
+# 启动 Workers 开发服务器
+pnpm run dev:workers
 
-# 启动开发服务器
-bun run dev
-
-# 编译
-bun run build
+# 编译 Workers
+pnpm run build:workers
 
 # 预览(使用与 Workers 相同的环境)
-bun run preview
+pnpm run preview:workers
 ```
 
 访问 http://localhost:3000 测试
@@ -167,14 +229,17 @@ bun run preview
 
 | 命令 | 说明 |
 |------|------|
-| `bun run build` | 构建 |
-| `bun run dev` | 本地开发服务器 |
-| `bun run deploy:local` | 从本地部署到 Cloudflare |
-| `bun run deploy:action` | 从 GitHub Actions 部署到 Cloudflare |
-| `bun run install:backend` | 安装 Sub-Store 后端依赖 |
-| `bun run fetch:substore` | 下载 Sub-Store 源码 |
-| `bun run tail` | 实时查看 Cloudflare Worker 生产环境的日志 |
-| `bun run prepare:quickjs-wasm` | 准备 QuickJS WASM | 
+| `pnpm run build:workers` | 构建 Workers |
+| `pnpm run dev:workers` | 启动 Workers 本地开发服务器 |
+| `pnpm run dev:deno` | 启动 Deno skeleton 服务 |
+| `pnpm run migrate:deno-pg` | 执行 Deno/Postgres schema migration skeleton |
+| `pnpm run preview:workers` | 预览 Workers 构建产物 |
+| `pnpm run deploy:workers:local` | 从本地部署到 Cloudflare |
+| `pnpm run deploy:workers:action` | 从 GitHub Actions 部署到 Cloudflare |
+| `pnpm run install:backend` | 安装 Sub-Store 后端依赖 |
+| `pnpm run fetch:substore` | 下载 Sub-Store 源码并安装后端依赖 |
+| `pnpm run tail` | 实时查看 Cloudflare Worker 生产环境的日志 |
+| `pnpm run prepare:quickjs-wasm` | 准备 QuickJS WASM | 
 
 ---
 
