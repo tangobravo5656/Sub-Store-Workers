@@ -158,7 +158,7 @@ function subStoreTransformPlugin() {
 
             // 硬编码 isSurge = true (因为模块加载时 $httpClient 可能还未设置)
             contents = contents.replace(
-                /const\s+isSurge\s*=\s*typeof\s+\$httpClient\s*!==\s*['"]undefined['"]\s*&&\s*!isLoon\s*;/g,
+                /const\s+isSurge\s*=\s*typeof\s+\$httpClient\s*!==\s*['"]undefined['"][^;\n]*;/g,
                 'const isSurge = true;'
             );
 
