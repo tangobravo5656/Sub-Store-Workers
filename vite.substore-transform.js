@@ -127,9 +127,9 @@ export default function getParser() {
 
             contents = contents.replace(/const\s+isNode\s*=\s*eval\s*\(\s*`typeof\s+process\s*!==\s*"undefined"`\s*\)/g, 'const isNode = false');
             contents = contents.replace(
-    /const\s+isSurge\s*=\s*typeof\s+\$httpClient\s*!==\s*['"]undefined['"][^;\n]*;/g,
-    'const isSurge = true;'
-);
+                /const\s+isSurge\s*=\s*typeof\s+\$httpClient\s*!==\s*['"]undefined['"][^;\n]*;/g,
+                'const isSurge = true;',
+            );
 
             assertNoDangerousRequireResidue(contents, id, this);
 
